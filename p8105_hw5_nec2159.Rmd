@@ -74,7 +74,7 @@ power_function = function(n = 30, mu, sigma = 5) {
   
   x = rnorm(n = n, mean = mu, sd = sigma)
   
-  t.test(x, alpha = .05) |> 
+  t.test(x) |> 
     broom::tidy()
   
 }
@@ -109,14 +109,47 @@ power_df |>
   group_by(mu) |> 
   mutate(conclusion = if_else(p_value < .05, "reject", "FTR")) |>
   summarize(
-    prop = mean(conclusion == "reject")
+    prop_reject = mean(conclusion == "reject")
   ) |> 
-  ggplot(aes(x = mu, y = prop)) +
+  ggplot(aes(x = mu, y = prop_reject)) +
   geom_point() +
-  geom_smooth(se = FALSE)
+  geom_smooth(se = FALSE) +
+  labs(
+    x = "True Mean",
+    y = "Proportion of Rejections",
+    title = "Proportion of Times Null was Rejected for Each True Mean"
+  )
 ```
 
+```{r}
+power_df |> 
+  group_by(mu) |> 
+  mutate(avg_estimate = mean(estimate)) |> 
+  ggplot(aes(x = mu, y = avg_estimate)) +
+  geom_point() +
+  geom_line() +
+  labs(
+    x = "True Mean",
+    y = "Average Estimate",
+    title = "Average Mean Estimate Compared to True Mean"
+  )
+```
 
+```{r}
+power_df |> 
+  mutate(conclusion = if_else(p_value < .05, "reject", "FTR")) |> 
+  filter(conclusion == "reject") |> 
+  group_by(mu) |> 
+  mutate(avg_estimate = mean(estimate)) |>
+  ggplot(aes(x = mu, y = avg_estimate)) +
+  geom_point() +
+  geom_line() +
+  labs(
+    x = "True Mean",
+    y = "Average Estimate",
+    title = "Average Mean Estimate Compared to True Mean in\nSamples where Null was Rejected"
+  )
+```
 
 
 
