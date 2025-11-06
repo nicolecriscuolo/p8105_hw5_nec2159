@@ -9,6 +9,7 @@ output: github_document
 library(tidyverse)
 library(dplyr)
 library(broom)
+library(purrr)
 knitr::opts_chunk$set(
   fig.width = 6,
   fig.asp = .6,
@@ -98,18 +99,16 @@ power_df =
     mu = 1:6
     ) |> 
   mutate(
-    results = map(mu, ~power_function(mu = .x))
+    results = map(mu, \(mu) power_function(mu = mu))
     ) |> 
-  unnest(results) |> 
-  janitor::clean_names()
+  unnest(results)
 ```
 
 ```{r}
 power_df |> 
   group_by(mu) |> 
-  mutate(conclusion = if_else(p_value < .05, "reject", "FTR")) |>
   summarize(
-    prop_reject = mean(conclusion == "reject")
+    prop_reject = mean(p.value < .05)
   ) |> 
   ggplot(aes(x = mu, y = prop_reject)) +
   geom_point() +
@@ -137,8 +136,7 @@ power_df |>
 
 ```{r}
 power_df |> 
-  mutate(conclusion = if_else(p_value < .05, "reject", "FTR")) |> 
-  filter(conclusion == "reject") |> 
+  filter(p.value < .05) |> 
   group_by(mu) |> 
   mutate(avg_estimate = mean(estimate)) |>
   ggplot(aes(x = mu, y = avg_estimate)) +
@@ -151,7 +149,81 @@ power_df |>
   )
 ```
 
+## Problem 3
 
+```{r}
+homicide_df =
+  read_csv("data/homicide-data.csv") |> 
+  mutate(city_state = paste(city, state, sep = ", ")) |> 
+  group_by(city_state) |> 
+  summarize(
+    all_homicides = n(),
+    unsolved_homicides = sum(disposition %in% c("Closed without arrest", "Open/No arrest"))
+    )
+```
+
+```{r}
+baltimore_test =
+homicide_df |> 
+  filter(city_state == "Baltimore, MD") |> 
+  with(prop.test(x = unsolved_homicides, n = all_homicides)) |> 
+  broom::tidy() |> 
+  select(estimate, conf.low, conf.high)
+
+baltimore_test
+```
+
+```{r}
+prop_test = function(df) {
+  
+    prop.test(x = df$unsolved_homicides, n = df$all_homicides)
+
+}
+```
+
+```{r}
+nested_test_results =
+homicide_df |> 
+  nest(data = -city_state) |> 
+  mutate(
+    test = map(data, prop_test),
+    results = map(test, broom::tidy)
+  ) |> 
+  unnest(results) |> 
+  select(city_state, estimate, conf.low, conf.high)
+```
+
+```{r}
+nested_test_results |> 
+  mutate(city_state = reorder(city_state, estimate)) |> 
+  ggplot(aes(x = city_state, y = estimate)) +
+  geom_point(size = .5) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+
+
+
+```{r}
+test_results =
+homicide_df |> 
+  mutate(
+    test = map2(unsolved_homicides, all_homicides, prop.test),
+    results = map(test, broom::tidy)
+  ) |> 
+  unnest(results) |> 
+  select(city_state, estimate, conf.low, conf.high)
+```
+
+```{r}
+test_results |> 
+  mutate(city_state = reorder(city_state, estimate)) |> 
+  ggplot(aes(x = city_state, y = estimate)) +
+  geom_point(size = .5) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
 
 
 # REMINDER: CHANGE ITERATION FOR PROBLEM 2
