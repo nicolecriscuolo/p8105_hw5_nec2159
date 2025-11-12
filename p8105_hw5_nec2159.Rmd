@@ -76,7 +76,8 @@ power_function = function(n = 30, mu, sigma = 5) {
   x = rnorm(n = n, mean = mu, sd = sigma)
   
   t.test(x) |> 
-    broom::tidy()
+    broom::tidy() |> 
+    select(estimate, p.value)
   
 }
 ```
@@ -96,10 +97,10 @@ for (i in 1:500) {
 power_df =
   expand_grid(
     iter = 1:500,
-    mu = 1:6
+    mu = 0:6
     ) |> 
   mutate(
-    results = map(mu, \(mu) power_function(mu = mu))
+    results = map2(iter, mu, \(i, m) power_function(mu = m))
     ) |> 
   unnest(results)
 ```
@@ -120,6 +121,8 @@ power_df |>
   )
 ```
 
+When the true mean is 0, the graph shows that we reject the null (𝐻:𝜇= 0) about 5% of the time. This is what we would expect given alpha is .05, representing the false positive/ type I error rate as we are rejecting the null when the null is actually true. When the true mean is greater than 0 (so we know the null is false), the proportion of rejections represents the power, which is the probability that the null is rejected given that the null is false. As the true mean increases, power increases as well as it becomes easier to reject the null as the true mean deviates further from 0. Along the same lines, since the formula for effect size depends on the difference between the sample mean and the true mean, we can conclude that the effect size increases with both power and the population mean.
+
 ```{r}
 power_df |> 
   group_by(mu) |> 
@@ -129,10 +132,12 @@ power_df |>
   geom_line() +
   labs(
     x = "True Mean",
-    y = "Average Estimate",
+    y = "Average Mean Estimate",
     title = "Average Mean Estimate Compared to True Mean"
   )
 ```
+
+We can see the average mean estimates are approximately equal to the true mean. Since our sample size is relatively large (n = 30), each mean estimate is relatively precise. Additionally, taking the average of the mean estimates across thousands of iterations gives us a precise and accurate measure of the true mean since the sample mean is an unbiased estimator of the population mean.
 
 ```{r}
 power_df |> 
@@ -144,10 +149,12 @@ power_df |>
   geom_line() +
   labs(
     x = "True Mean",
-    y = "Average Estimate",
+    y = "Average Mean Estimate",
     title = "Average Mean Estimate Compared to True Mean in\nSamples where Null was Rejected"
   )
 ```
+
+In this case, the average mean estimates are approximately equal to the true mean only for the larger population means. When the true mean is closer to 0, the estimates are also going to be closer to 0 on average. Since we are only looking at the average mean estimates in cases where the null was rejected, we are looking at the average of the (few) cases where the estimates were large enough to conclude that the true mean isn't actually 0 (which is also why the average estimates are larger than the true mean). This is not aligned with the true mean because all of the estimates that were close to 1, 2, or 3 got filtered out since the null wasn't rejected in those cases. As the true mean increases, the average mean estimates also increase on average. Therefore, the cases where the null gets rejected here are more aligned with the true mean because estimates close to 4, 5, and 6 are almost always rejected and are taken into account in the averages.
 
 ## Problem 3
 
