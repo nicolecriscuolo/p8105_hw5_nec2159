@@ -62,11 +62,13 @@ ggplot(aes(x = bdays, y = prob_repeat)) +
   geom_point() +
   geom_line() +
   labs(
-    x = "Number of Birthdays",
+    x = "Number of People",
     y = "Probability of at least one repeated birthday",
-    title = "Probability of Repeat Birthdays"
+    title = "Probability of Repeat Birthdays for Given Numbers of People"
   )
 ```
+
+The plot indicates that the probability of at least two people sharing a birthday becomes greater than 50% when there are more than 23 people in the room. Additionally, if there are more than 50 people in the room, we can be almost certain that there will be at least one repeated birthday.
 
 ## Problem 2
 
@@ -169,48 +171,18 @@ homicide_df =
     )
 ```
 
+The raw data includes information about homicides in U.S. cities and includes `r nrow(read_csv("data/homicide-data.csv"))` observations and `r ncol(read_csv("data/homicide-data.csv"))` variables. It includes information about the victim such as name, race, age, and sex, information about the city such as latitude, longitude, and state, and information about the homicides such as disposition and reported date.
+
 ```{r}
 baltimore_test =
 homicide_df |> 
   filter(city_state == "Baltimore, MD") |> 
-  with(prop.test(x = unsolved_homicides, n = all_homicides)) |> 
+  with(prop.test(x = unsolved_homicides, n = all_homicides))
+
+baltimore_test |> 
   broom::tidy() |> 
   select(estimate, conf.low, conf.high)
-
-baltimore_test
 ```
-
-```{r}
-prop_test = function(df) {
-  
-    prop.test(x = df$unsolved_homicides, n = df$all_homicides)
-
-}
-```
-
-```{r}
-nested_test_results =
-homicide_df |> 
-  nest(data = -city_state) |> 
-  mutate(
-    test = map(data, prop_test),
-    results = map(test, broom::tidy)
-  ) |> 
-  unnest(results) |> 
-  select(city_state, estimate, conf.low, conf.high)
-```
-
-```{r}
-nested_test_results |> 
-  mutate(city_state = reorder(city_state, estimate)) |> 
-  ggplot(aes(x = city_state, y = estimate)) +
-  geom_point(size = .5) +
-  geom_errorbar(aes(ymin = conf.low, ymax = conf.high)) +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
-```
-
-
-
 
 ```{r}
 test_results =
@@ -229,8 +201,14 @@ test_results |>
   ggplot(aes(x = city_state, y = estimate)) +
   geom_point(size = .5) +
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high)) +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(
+    x = "City",
+    y = "Estimated Proportion of Unsolved Homicides",
+    title = "Estimated Proportion of Unsolved Homicides by City"
+  )
 ```
 
+The estimated proportion of unsolved homicides is the lowest for Richmond, VA and highest for Chicago IL.
 
 # REMINDER: CHANGE ITERATION FOR PROBLEM 2
